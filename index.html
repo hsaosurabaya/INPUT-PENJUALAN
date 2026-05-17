@@ -90,6 +90,9 @@
     .step-btn:active { color: var(--accent); background: var(--surface2); }
     .step-num { flex: 1; text-align: center; font-size: 15px; font-weight: 600; color: var(--text); }
     .step-num.auto { color: var(--blue); }
+    .step-input { flex: 1; text-align: center; font-size: 15px; font-weight: 600; color: var(--text); background: transparent; border: none; outline: none; font-family: inherit; width: 100%; min-width: 0; padding: 0; }
+    .step-input::-webkit-inner-spin-button, .step-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .ctrl-sub { font-size: 9px; color: #3a4060; font-style: italic; margin-top: 1px; }
 
     /* BOTTOM */
     .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 0.5px solid var(--border); padding: 10px 16px 20px; z-index: 50; }
@@ -230,7 +233,7 @@
 <div class="toast-wrap" id="toastWrap"></div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyfTFfdr4lDbzaAIMsJ7m7NAJ2sAFRfICc_3roevByu-kl5CVrdxT_BMWDO4RuI2n-Q-A/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzhhAFLEQzIBgsTENm4cXSPcJtfY98_HEiaMPFY_EBrXpXdnru8dZp28pYdEE02SbLYAA/exec";
 
 const HARGA = {
   RETAIL: {
@@ -399,14 +402,17 @@ function buildCard(nama, i) {
           <div class="ctrl-label">Stock Awal</div>
           <div class="stepper">
             <button class="step-btn" onclick="step(event,${i},'stkAwal',-1)">−</button>
-            <div class="step-num">${s.stkAwal || 0}</div>
+            <input class="step-input" type="number" min="0" inputmode="numeric" value="${s.stkAwal || 0}"
+              onclick="event.stopPropagation()"
+              oninput="onDirectInput(event,${i},'stkAwal')"
+              onblur="onBlurInput(${i},'stkAwal',this)">
             <button class="step-btn" onclick="step(event,${i},'stkAwal',1)">+</button>
           </div>
         </div>
         <div class="ctrl">
           <div class="ctrl-label">Stk Kembali</div>
           <div class="ctrl-sub">Otomatis</div>
-          <div class="stepper" style="border-color:#1e2a4a">
+          <div class="stepper" style="border-color:#1e2a4a; margin-top:10px">
             <div style="width:34px"></div>
             <div class="step-num auto">${kembali}</div>
             <div style="width:34px"></div>
@@ -416,7 +422,10 @@ function buildCard(nama, i) {
           <div class="ctrl-label">Stock Jual</div>
           <div class="stepper">
             <button class="step-btn" onclick="step(event,${i},'jual',-1)">−</button>
-            <div class="step-num">${s.jual || 0}</div>
+            <input class="step-input" type="number" min="0" inputmode="numeric" value="${s.jual || 0}"
+              onclick="event.stopPropagation()"
+              oninput="onDirectInput(event,${i},'jual')"
+              onblur="onBlurInput(${i},'jual',this)">
             <button class="step-btn" onclick="step(event,${i},'jual',1)">+</button>
           </div>
         </div>
@@ -442,6 +451,35 @@ function step(e, i, field, delta) {
   if (!state[i]) state[i] = { stkAwal: 0, jual: 0 };
   state[i][field] = Math.max(0, (state[i][field] || 0) + delta);
   filterItems();
+}
+
+function onDirectInput(e, i, field) {
+  e.stopPropagation();
+  if (!state[i]) state[i] = { stkAwal: 0, jual: 0 };
+  const val = parseInt(e.target.value) || 0;
+  state[i][field] = Math.max(0, val);
+  // update summary & kembali tanpa re-render penuh agar input tidak hilang fokus
+  updateSummary();
+  // update tampilan kembali & subtotal di card ini saja
+  const kembali = calcKembali(i);
+  const kemEl = document.querySelector('#card-' + i + ' .step-num.auto');
+  if (kemEl) kemEl.textContent = kembali;
+  const harga = HARGA[currentChannel][NAMA_BARANG[i]] || 0;
+  const total = (state[i].jual || 0) * harga;
+  const hasVal = total > 0;
+  const subEl = document.querySelector('#card-' + i + ' .item-subtotal');
+  if (subEl) { subEl.textContent = hasVal ? fmt(total) : '—'; subEl.className = 'item-subtotal' + (hasVal ? '' : ' zero'); }
+  const card = document.getElementById('card-' + i);
+  if (card) { card.className = 'item-card' + (hasVal ? ' active' : ''); }
+  const numEl = document.querySelector('#card-' + i + ' .item-num');
+  if (numEl) { numEl.style.background = hasVal ? 'var(--accent)' : ''; numEl.style.color = hasVal ? '#fff' : ''; }
+}
+
+function onBlurInput(i, field, el) {
+  if (!state[i]) state[i] = { stkAwal: 0, jual: 0 };
+  const val = Math.max(0, parseInt(el.value) || 0);
+  state[i][field] = val;
+  el.value = val;
 }
 
 function updateSummary() {
