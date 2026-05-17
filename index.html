@@ -531,7 +531,7 @@ async function submitData() {
 
   const tgl = new Date(tanggal);
   const payload = {
-    tanggal: tgl.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
+    tanggal: tanggal }),
     channel, salesman, jobtitle, kodeOutlet, namaOutlet, items
   };
 
